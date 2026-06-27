@@ -12,7 +12,7 @@ from pydantic import BaseModel
 from fastembed import TextEmbedding
 from anthropic import Anthropic
 
-POSTS_DIR = os.environ.get("POSTS_DIR", "/home/letbu/RV_Second_Brain")
+POSTS_DIR = os.environ.get("POSTS_DIR", os.path.dirname(os.path.abspath(__file__)))
 
 app = FastAPI(title="Rohit's Second Brain")
 
