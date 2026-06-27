@@ -1,6 +1,6 @@
 """
 Rohit Virkud Second Brain - RAG-powered chat app.
-FastAPI + sentence-transformers + Anthropic Claude 3.5 Haiku.
+FastAPI + fastembed + Anthropic Claude Haiku.
 """
 
 import os
@@ -9,11 +9,10 @@ import numpy as np
 from fastapi import FastAPI
 from fastapi.responses import HTMLResponse, JSONResponse
 from pydantic import BaseModel
-from sentence_transformers import SentenceTransformer
+from fastembed import TextEmbedding
 from anthropic import Anthropic
 
-POSTS_DIR = "/home/letbu/RV_Second_Brain"
-EMBED_MODEL = "all-MiniLM-L6-v2"
+POSTS_DIR = os.environ.get("POSTS_DIR", "/home/letbu/RV_Second_Brain")
 
 app = FastAPI(title="Rohit's Second Brain")
 
@@ -28,8 +27,8 @@ print(f"Loaded {len(posts)} posts")
 
 # --- Build embeddings ---
 print("Loading embedding model...")
-encoder = SentenceTransformer(EMBED_MODEL)
-embeddings = encoder.encode([p["text"] for p in posts], show_progress_bar=True)
+encoder = TextEmbedding("BAAI/bge-small-en-v1.5")
+embeddings = np.array(list(encoder.embed([p["text"] for p in posts])))
 print(f"Embeddings shape: {embeddings.shape}")
 
 # --- Anthropic client ---
@@ -74,7 +73,7 @@ class ChatRequest(BaseModel):
 
 
 def find_relevant_posts(query, top_k=5):
-    query_vec = encoder.encode([query])
+    query_vec = np.array(list(encoder.embed([query])))
     scores = np.dot(embeddings, query_vec.T).flatten()
     top_idx = np.argsort(scores)[-top_k:][::-1]
     results = []
