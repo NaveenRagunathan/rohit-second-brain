@@ -1,6 +1,6 @@
 """
 Rohit Virkud Second Brain - RAG-powered chat app.
-FastAPI + fastembed + Anthropic Claude Haiku.
+FastAPI + TF-IDF + Anthropic Claude Haiku.
 """
 
 import os
@@ -9,7 +9,7 @@ import numpy as np
 from fastapi import FastAPI
 from fastapi.responses import HTMLResponse, JSONResponse
 from pydantic import BaseModel
-from fastembed import TextEmbedding
+from sklearn.feature_extraction.text import TfidfVectorizer
 from anthropic import Anthropic
 
 POSTS_DIR = os.environ.get("POSTS_DIR", os.path.dirname(os.path.abspath(__file__)))
@@ -25,11 +25,11 @@ for f in post_files:
     posts.append({"file": os.path.basename(f), "text": text})
 print(f"Loaded {len(posts)} posts")
 
-# --- Build embeddings ---
-print("Loading embedding model...")
-encoder = TextEmbedding("BAAI/bge-small-en-v1.5")
-embeddings = np.array(list(encoder.embed([p["text"] for p in posts])))
-print(f"Embeddings shape: {embeddings.shape}")
+# --- Build TF-IDF vectors ---
+print("Building TF-IDF index...")
+vectorizer = TfidfVectorizer(stop_words="english", max_features=10000)
+embeddings = vectorizer.fit_transform([p["text"] for p in posts])
+print(f"TF-IDF matrix shape: {embeddings.shape}")
 
 # --- Anthropic client ---
 api_key = os.environ.get("ANTHROPIC_API_KEY", "")
@@ -73,8 +73,8 @@ class ChatRequest(BaseModel):
 
 
 def find_relevant_posts(query, top_k=5):
-    query_vec = np.array(list(encoder.embed([query])))
-    scores = np.dot(embeddings, query_vec.T).flatten()
+    query_vec = vectorizer.transform([query])
+    scores = np.dot(embeddings, query_vec.T).toarray().flatten()
     top_idx = np.argsort(scores)[-top_k:][::-1]
     results = []
     for idx in top_idx:
